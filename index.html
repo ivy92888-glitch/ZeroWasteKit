@@ -1,0 +1,1583 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>家底清 · 家庭库存管理</title>
+<style>
+  :root{
+    --green:#00D26A; --green-2:#4ADE80; --bg:#F0FDF4; --bg-2:#DCFCE7;
+    --card:#ffffff; --ink:#1f2937; --ink-soft:#6b7280; --line:#e5e7eb;
+    --warn:#f59e0b; --danger:#ef4444; --blue:#2563eb;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+    color:var(--ink); background:linear-gradient(160deg,var(--bg),var(--bg-2));
+    min-height:100vh; padding:18px 14px 60px; line-height:1.55;
+  }
+  .wrap{max-width:1080px;margin:0 auto}
+  header.top{text-align:center;margin-bottom:22px}
+  header.top h1{font-size:30px;color:#065f46;letter-spacing:2px}
+  header.top .sub{color:var(--ink-soft);font-size:14px;margin-top:4px}
+  .mode-tag{display:inline-block;margin-top:8px;font-size:12px;padding:2px 10px;border-radius:999px;
+    background:#dcfce7;color:#166534;border:1px solid #bbf7d0}
+
+  .section{margin-top:26px}
+  .section h2{font-size:19px;color:#065f46;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+  .section h2::before{content:"";width:8px;height:18px;border-radius:4px;background:var(--green)}
+  .section .hint{font-size:12.5px;color:var(--ink-soft);margin:-6px 0 12px}
+
+  /* 状态栏 4 卡 */
+  .status-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+  .stat{background:var(--card);border-radius:16px;padding:14px;box-shadow:0 4px 14px rgba(16,185,129,.08);border:1px solid var(--line)}
+  .stat .label{font-size:12px;color:var(--ink-soft)}
+  .stat .value{font-size:16px;font-weight:700;color:#065f46;margin-top:4px}
+  .stat .value.small{font-size:14px;font-weight:600}
+  .stat .warn-item{font-size:13px;color:var(--ink);padding:2px 0;border-bottom:1px dashed var(--line)}
+  .stat .warn-item:last-child{border-bottom:none}
+  .stat .warn-item b{color:var(--danger)}
+
+  /* 三餐 */
+  .meals{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .meal{background:var(--card);border-radius:18px;padding:16px;box-shadow:0 6px 18px rgba(16,185,129,.10);
+    border:1px solid var(--line);display:flex;flex-direction:column}
+  .meal h3{font-size:16px;color:#065f46;margin-bottom:10px;text-align:center}
+  .meal .result{min-height:140px;background:#f6fef9;border:1px dashed #bbf7d0;border-radius:12px;
+    padding:12px;font-size:14px;color:var(--ink);flex:1}
+  .meal .result .title{font-weight:700;color:#047857;font-size:15px;margin-bottom:8px}
+  .meal .result .consume{font-size:12.5px;color:var(--ink-soft);margin-top:8px;line-height:1.7}
+  .meal .result .consume span{display:inline-block;background:#ecfdf5;color:#065f46;border-radius:6px;
+    padding:1px 7px;margin:2px 3px 0 0;font-size:12px}
+  .meal .result .tip{font-size:12.5px;color:#047857;background:#ecfdf5;border:1px solid #a7f3d0;
+    border-radius:8px;padding:7px 9px;margin-top:10px;line-height:1.6}
+  .meal .placeholder{color:var(--ink-soft);text-align:center;padding-top:40px;font-size:13px}
+
+  .btn{cursor:pointer;border:none;border-radius:10px;padding:10px 14px;font-size:14px;font-weight:700;
+    background:var(--green);color:#fff;transition:.15s;box-shadow:0 3px 10px rgba(0,210,106,.25)}
+  .btn:hover{background:var(--green-2)}
+  .btn:active{transform:translateY(1px)}
+  .btn.full{width:100%;margin-top:12px}
+  .btn.ghost{background:#ecfdf5;color:#047857;border:1px solid #a7f3d0}
+  .btn.ghost:hover{background:#d1fae5}
+  .btn.sm{padding:5px 9px;font-size:12px;border-radius:8px}
+  .btn.danger{background:#fee2e2;color:#b91c1c;border:1px solid #fecaca}
+  .btn.danger:hover{background:#fecaca}
+  .btn.blue{background:var(--blue);box-shadow:0 3px 10px rgba(37,99,235,.25)}
+  .btn.blue:hover{background:#1d4ed8}
+
+  /* 入库登记表单 */
+  .form-card{background:var(--card);border-radius:18px;padding:16px 18px;box-shadow:0 6px 18px rgba(16,185,129,.10);border:1px solid var(--line)}
+  .addform{display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr auto;gap:10px;align-items:end}
+  .addform .field{display:flex;flex-direction:column;gap:4px}
+  .addform label{font-size:12px;color:var(--ink-soft)}
+  .addform input,.addform select{padding:8px 10px;border:1px solid var(--line);border-radius:10px;font-size:14px;background:#fff;color:var(--ink)}
+  .addform input:focus,.addform select:focus{outline:none;border-color:var(--green)}
+  #addMsg{margin-top:10px;font-size:13px;color:#047857;min-height:18px}
+
+  /* 库房表格 */
+  .table-card{background:var(--card);border-radius:18px;padding:6px;box-shadow:0 6px 18px rgba(16,185,129,.10);border:1px solid var(--line);overflow-x:auto}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;min-width:640px}
+  th,td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--line)}
+  th{background:#f0fdf4;color:#065f46;font-weight:700;position:sticky;top:0}
+  tr:last-child td{border-bottom:none}
+  /* 表格行悬停高亮（薄荷绿） */
+  tbody tr{transition:background .16s ease, box-shadow .16s ease}
+  tbody tr:hover{background:#dcfce7}
+  tbody tr:hover td:first-child{box-shadow:inset 3px 0 0 var(--green)}
+  tbody tr:hover .cat-pill{background:#a7f3d0}
+  td input[type=text]{width:90px;padding:5px 7px;border:1px solid var(--line);border-radius:8px;font-size:13px}
+  td input[type=date]{padding:5px 7px;border:1px solid var(--line);border-radius:8px;font-size:13px}
+  .cat-pill{display:inline-block;padding:1px 9px;border-radius:999px;font-size:12px;background:#ecfdf5;color:#047857}
+  .cat-pill.editable{cursor:pointer;transition:.15s}
+  .cat-pill.editable:hover{background:#bbf7d0;box-shadow:0 0 0 2px #a7f3d0}
+  .cat-pill.editable::after{content:" ✎";opacity:0;font-size:11px;transition:.15s}
+  .cat-pill.editable:hover::after{opacity:.7}
+  .ops{display:flex;gap:6px;flex-wrap:wrap}
+  .empty{padding:30px;text-align:center;color:var(--ink-soft)}
+
+  /* 消耗计划 */
+  .plan-summary{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px}
+  .plan-summary .chip{background:#fff;border:1px solid var(--line);border-radius:12px;padding:8px 14px;font-size:13px;box-shadow:0 2px 8px rgba(16,185,129,.06)}
+  .plan-summary .chip b{color:#047857;font-size:15px}
+  .today-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;margin-bottom:18px}
+  .today-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:13px;box-shadow:0 4px 12px rgba(16,185,129,.08)}
+  .today-card .tc-head{display:flex;align-items:center;gap:6px;font-weight:700;color:#065f46;flex-wrap:wrap}
+  .today-card .tc-days{margin-left:auto;font-size:12px;font-weight:700;padding:1px 8px;border-radius:999px}
+  .tc-days.urg{background:#fee2e2;color:#b91c1c}
+  .tc-days.mid{background:#fef3c7;color:#b45309}
+  .tc-days.ok{background:#dcfce7;color:#166534}
+  .today-card .tc-body{font-size:13px;color:var(--ink-soft);margin:8px 0 10px}
+  .today-card .tc-body b{color:var(--ink)}
+
+  /* 折叠菜单 */
+  .menu-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+  details.menu{background:var(--card);border-radius:14px;border:1px solid var(--line);overflow:hidden}
+  details.menu>summary{cursor:pointer;padding:12px 14px;font-weight:700;color:#065f46;list-style:none;
+    display:flex;justify-content:space-between;align-items:center}
+  details.menu>summary::-webkit-details-marker{display:none}
+  details.menu>summary::after{content:"▸";color:var(--green);transition:.2s}
+  details.menu[open]>summary::after{transform:rotate(90deg)}
+  details.menu .body{padding:0 14px 14px;font-size:13.5px;color:var(--ink)}
+  details.menu .body .row{display:flex;gap:8px;padding:4px 0;border-bottom:1px dashed var(--line)}
+  details.menu .body .row:last-child{border-bottom:none}
+  details.menu .body .row .k{color:#047857;font-weight:700;min-width:42px}
+
+  /* 相克 */
+  .taboo{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+  .taboo .card{background:var(--card);border-radius:14px;padding:14px;border:1px solid var(--line);
+    border-left:5px solid var(--warn);box-shadow:0 4px 12px rgba(245,158,11,.08)}
+  .taboo .card h4{color:#b45309;font-size:14.5px;margin-bottom:6px;display:flex;align-items:center;gap:6px}
+  .taboo .card p{font-size:13px;color:var(--ink-soft)}
+
+  footer{text-align:center;color:var(--ink-soft);font-size:12px;margin-top:34px}
+
+  /* 自种补给 + 每周专款 */
+  .selfgrow-card, .fund-card{background:var(--card);border-radius:18px;padding:16px 18px;box-shadow:0 6px 18px rgba(16,185,129,.10);border:1px solid var(--line)}
+  .crop-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;margin-top:6px}
+  .crop{background:#f6fef9;border:1px solid #bbf7d0;border-radius:14px;padding:12px;position:relative}
+  .crop .c-name{font-weight:700;color:#065f46;font-size:15px}
+  .crop .c-meta{font-size:12.5px;color:var(--ink-soft);margin:4px 0 8px}
+  .crop .c-status{display:inline-block;font-size:11px;padding:1px 8px;border-radius:999px;background:#dcfce7;color:#166534;margin-left:6px}
+  .crop .c-actions{display:flex;gap:6px;flex-wrap:wrap}
+  .fund-summary{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:4px}
+  .fund-summary .chip{background:#fff;border:1px solid var(--line);border-radius:12px;padding:8px 14px;font-size:13px;box-shadow:0 2px 8px rgba(16,185,129,.06)}
+  .fund-summary .chip b{color:#047857;font-size:15px}
+  .fund-summary .chip.alert b{color:#b91c1c}
+  .ledger{width:100%;border-collapse:collapse;font-size:13px;margin-top:4px}
+  .ledger th,.ledger td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--line)}
+  .ledger th{background:#f0fdf4;color:#065f46;font-weight:700}
+  .mini-form{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-top:12px}
+  .mini-form .field{display:flex;flex-direction:column;gap:4px}
+  .mini-form label{font-size:12px;color:var(--ink-soft)}
+  .mini-form input,.mini-form select{padding:7px 9px;border:1px solid var(--line);border-radius:9px;font-size:13px;background:#fff;color:var(--ink)}
+
+  @media(max-width:760px){
+    .status-grid{grid-template-columns:repeat(2,1fr)}
+    .meals{grid-template-columns:1fr}
+    .addform{grid-template-columns:1fr 1fr}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <h1>家底清</h1>
+    <div class="sub">把家里的每一份存货，吃透用尽不浪费</div>
+    <div class="mode-tag" id="modeTag">存储模式加载中…</div>
+  </header>
+
+  <!-- 0. 库存仪表盘 -->
+  <section class="section">
+    <h2>库存总览</h2>
+    <div class="status-grid">
+      <div class="stat">
+        <div class="label">待消耗总数</div>
+        <div class="value" id="statTotal">—</div>
+      </div>
+      <div class="stat">
+        <div class="label">临期（≤7 天）</div>
+        <div class="value" id="statUrgent">—</div>
+      </div>
+      <div class="stat">
+        <div class="label">最早到期</div>
+        <div class="value small" id="statEarliest">—</div>
+      </div>
+      <div class="stat">
+        <div class="label">临期预警（TOP3）</div>
+        <div class="value small" id="warnBox"><span class="placeholder">加载中…</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 1. 一日三餐抽签（食物专属） -->
+  <section class="section">
+    <h2>一日三餐 · 独立抽签</h2>
+    <div class="hint">仅基于库存中的食材生成，数量为 0 或已吃完的食材不参与。 food-only.</div>
+    <div class="meals">
+      <div class="meal">
+        <h3>晨间 · 速成</h3>
+        <div class="result" id="res-breakfast"><div class="placeholder">点击「翻牌子」<br>生成一份快手早餐</div></div>
+        <button class="btn full" data-draw="breakfast">翻牌子</button>
+      </div>
+      <div class="meal">
+        <h3>午间 · 丰盛</h3>
+        <div class="result" id="res-lunch"><div class="placeholder">点击「翻牌子」<br>生成一份正经午饭</div></div>
+        <button class="btn full" data-draw="lunch">翻牌子</button>
+      </div>
+      <div class="meal">
+        <h3>晚间 · 轻负</h3>
+        <div class="result" id="res-dinner"><div class="placeholder">点击「翻牌子」<br>生成一份易消化晚餐</div></div>
+        <button class="btn full" data-draw="dinner">翻牌子</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. 入库登记（用户自主录入） -->
+  <section class="section">
+    <h2>入库登记 · 自主录入</h2>
+    <div class="hint">手动新增任意食物或家用物品；「期限」即你计划用完 / 该物品到期的日期，消耗计划会据此倒推每日建议量。</div>
+    <div class="form-card">
+      <form class="addform" id="addForm" autocomplete="off">
+        <div class="field">
+          <label>名称</label>
+          <input type="text" id="addName" placeholder="如 抽纸 / 鸡蛋 / 洗衣液" required />
+        </div>
+        <div class="field">
+          <label>分类</label>
+          <select id="addCat"></select>
+        </div>
+        <div class="field">
+          <label>数量</label>
+          <input type="text" id="addQty" placeholder="如 500g / 2瓶 / 1包" required />
+        </div>
+        <div class="field">
+          <label>期限（消耗/保质）</label>
+          <input type="date" id="addExp" />
+        </div>
+        <div class="field">
+          <label>&nbsp;</label>
+          <button type="submit" class="btn blue">➕ 添加入库</button>
+        </div>
+      </form>
+      <div id="addMsg"></div>
+    </div>
+  </section>
+
+  <!-- 3. 库存总览（双向编辑） -->
+  <section class="section">
+    <h2>库存总览（食物 + 家用）</h2>
+    <div class="hint">仅显示「待消耗」物品；数量为 0 或标记「已光盘」的自动隐藏。修改即时同步到云端。点「分类」标签即可直接改分类（选错时随时修正）。</div>
+    <div class="table-card">
+      <table>
+        <thead>
+          <tr><th>名称</th><th>分类</th><th>数量</th><th>期限</th><th>状态</th><th>操作</th></tr>
+        </thead>
+        <tbody id="invBody">
+          <tr><td colspan="6" class="empty">加载中…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 4. 期限倒推消耗计划 -->
+  <section class="section" id="planSection">
+    <h2>消耗计划 · 临期优先</h2>
+    <div class="hint">按「期限」倒推、优先安排短保物品；每日建议量设有各分类的合理上限，不会建议你一天吃完剩余全部。期限内吃不完的会提示尽快处理。</div>
+    <div class="plan-summary" id="planSummary"></div>
+    <h3 style="font-size:15px;color:#065f46;margin:6px 0 10px">今日优先消耗</h3>
+    <div class="today-grid" id="planToday"></div>
+  </section>
+
+  <!-- 5. 本周备选菜单 -->
+  <section class="section">
+    <h2>本周备选菜单参考</h2>
+    <div class="hint">已自动隐藏库存耗尽的食材，仅展示当前库存还能做的搭配。</div>
+    <div class="menu-grid" id="menuGrid"></div>
+  </section>
+
+  <!-- 6. 食物相克 -->
+  <section class="section">
+    <h2>食物相克与饮食禁忌</h2>
+    <div class="taboo" id="tabooGrid"></div>
+  </section>
+
+  <!-- 7. 自种补给 -->
+  <section class="section">
+    <h2>自种补给 · 零成本鲜菜护城河</h2>
+    <div class="hint">自己水培/土培的香草与豆芽，不占云端库存、不过期、也不花每周 70 元的额度。标记「可采收」的会直接进入三餐抽签的蔬菜池，作为永远不缺的鲜菜来源。</div>
+    <div class="selfgrow-card">
+      <form class="mini-form" id="growForm" autocomplete="off">
+        <div class="field"><label>作物</label><input type="text" id="growName" placeholder="如 豆芽 / 罗勒" required /></div>
+        <div class="field"><label>状态</label>
+          <select id="growStage">
+            <option>生长中</option>
+            <option>可采收</option>
+            <option>已用完</option>
+          </select>
+        </div>
+        <div class="field"><label>数量</label><input type="text" id="growQty" placeholder="如 半盘" /></div>
+        <div class="field"><label>备注</label><input type="text" id="growNote" placeholder="如 水培，第3茬" /></div>
+        <div class="field"><label>&nbsp;</label><button type="submit" class="btn">🌱 登记</button></div>
+      </form>
+      <div class="crop-grid" id="cropGrid"></div>
+      <div id="growMsg" style="margin-top:10px;font-size:13px;color:#047857;min-height:18px"></div>
+    </div>
+  </section>
+
+  <!-- 8. 每周 70 元专款 -->
+  <section class="section">
+    <h2>每周 70 元专款 · 花在哪了</h2>
+    <div class="hint">这 70 元只买「鲜菜 + 蛋奶 + 补剂」的刀刃物资，主食和调料靠底仓不占额度。记一笔就能看到本周还剩多少、月度是否还在 280 元以内。</div>
+    <div class="fund-card">
+      <div class="fund-summary" id="fundSummary"></div>
+      <form class="mini-form" id="fundForm" autocomplete="off">
+        <div class="field"><label>买了什么</label><input type="text" id="fundItem" placeholder="如 小白菜" required /></div>
+        <div class="field"><label>金额(元)</label><input type="text" id="fundCost" placeholder="如 5.5" required /></div>
+        <div class="field"><label>类别</label>
+          <select id="fundCat">
+            <option>鲜菜</option>
+            <option>蛋奶</option>
+            <option>补剂</option>
+            <option>其他</option>
+          </select>
+        </div>
+        <div class="field"><label>日期</label><input type="date" id="fundDate" /></div>
+        <div class="field"><label>&nbsp;</label><button type="submit" class="btn">💰 记一笔</button></div>
+      </form>
+      <div class="table-card" style="margin-top:12px">
+        <table style="min-width:520px">
+          <thead>
+            <tr><th>日期</th><th>项目</th><th>类别</th><th>金额</th><th>操作</th></tr>
+          </thead>
+          <tbody id="fundBody"></tbody>
+        </table>
+      </div>
+      <div id="fundMsg" style="margin-top:10px;font-size:13px;color:#047857;min-height:18px"></div>
+    </div>
+  </section>
+
+  <footer>家底清 · 内置数据表在线存储 / 本地兜底 · 数据仅存于你的账号与浏览器</footer>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var DATABASE_ID = 'IrpnWd0Fpe55A9HFezDtm3';
+  var GROW_DB_ID = 'mBCilVqmN9x65wyB2SMRzk';   // Self_Grow    自种补给
+  var FUND_DB_ID = '9kiVIh5LxIQsMx4eG9XC1K';   // Weekly_Fund  每周 70 元专款
+  var dbSdk = window.__SMART_PAGE__ && window.__SMART_PAGE__.database;
+  var LS_KEY = 'qinghuan_food_inventory_v2';
+  var LS_GROW = 'qinghuan_self_grow_v1';
+  var LS_FUND = 'qinghuan_weekly_fund_v1';
+  var WEEKLY_CAP = 70;              // 每周 70 元
+  var MONTHLY_CAP = WEEKLY_CAP * 4; // 每月上限（按 4 周折算 = 280 元）
+
+  // 全部分类：保留原有食材分类 + 新增家用分类（与数据表字段选项一致）
+  var CATEGORIES = ["蔬菜","水果","肉类","主食","零食","调料","日用品","清洁用品","药品","文具","工具","宠物用品","其他"];
+
+  /* ============ 默认种子数据（仅当表/本地为空时写入） ============ */
+  function defaultItems(){
+    var raw = [
+      ["生菜","蔬菜","750g"],["芒果","水果","500g"],["苹果","水果","4个"],
+      ["水饺","主食","300g"],["福鼎肉片","肉类","250g"],["面筋","蔬菜","3个"],
+      ["大白菜","蔬菜","1750g"],["云腿月饼","零食","10个"],["甜月饼","零食","2个"],
+      ["鸡肉肠","肉类","20根"],["榴莲飞饼","主食","3个"],["土豆","蔬菜","2500g"],
+      ["胡萝卜","蔬菜","250g"],["金华火腿","肉类","1000g"],["烤鸭饼","主食","100张"],
+      ["面粉","主食","1000g"],["冷冻薯条","零食","1000g"],["面饼","主食","10个"],
+      ["长糯米","主食","250g"],["大米","主食","250g"],["冬阴功汤底","调料","210g"],
+      ["贵州红酸汤","调料","620g"],["椰浆","调料","400g"],["生姜","调料","250g"],
+      ["木姜子油","调料","1瓶"],["蒜头油","调料","1瓶"],["奶粉","调料","300g"],
+      ["咖啡浓缩液","调料","30包"],["麦片","主食","1包"],["蜂蜜","调料","1罐"],
+      ["茶包","调料","10包"],["袋装茶叶","调料","90g"],["甜酒曲","调料","24g"],
+      ["南酸枣糕","零食","30颗"],["牛肉粒","零食","100粒"],["奶贝","零食","100个"]
+    ];
+    function expOf(cat){
+      if(cat==="蔬菜"||cat==="水果"||cat==="肉类") return "2026-10-25";
+      if(cat==="零食") return "2026-11-18";
+      return "2027-04-18";
+    }
+    return raw.map(function(r,i){
+      return {_id:"seed_"+i, Name:r[0], Category:r[1], Quantity:r[2],
+              ExpireDate:expOf(r[1]), Status:"待消耗"};
+    });
+  }
+
+  /* ============ 全局库存 ============ */
+  var INV = [];
+
+  /* ============ 数据层：云端 SDK + 本地兜底 ============ */
+  function isCloud(){ return !!dbSdk; }
+
+  function norm(rec){
+    return {
+      _id: rec._id || rec.record_id || ("local_"+Math.random().toString(36).slice(2)),
+      Name: rec.Name, Category: rec.Category, Quantity: rec.Quantity,
+      ExpireDate: (rec.ExpireDate||"").slice(0,10), Status: rec.Status
+    };
+  }
+
+  function loadAllCloud(start, acc, guard){
+    start = start||undefined; acc = acc||[]; guard = (guard||0)+1;
+    if(guard>100) return Promise.resolve(acc);
+    return dbSdk.query({databaseId:DATABASE_ID, pageSize:200, startCursor:start}).then(function(r){
+      acc = acc.concat((r.results||[]).map(norm));
+      var next = r.nextCursor;
+      if(r.hasMore && next && next!==start && (r.results||[]).length){
+        return loadAllCloud(next, acc, guard);
+      }
+      return acc;
+    });
+  }
+
+  function loadLocal(){
+    try{
+      var s = localStorage.getItem(LS_KEY);
+      if(s){ return Promise.resolve(JSON.parse(s)); }
+    }catch(e){}
+    var seed = defaultItems();
+    try{ localStorage.setItem(LS_KEY, JSON.stringify(seed)); }catch(e){}
+    return Promise.resolve(seed);
+  }
+
+  function persistLocal(){
+    try{ localStorage.setItem(LS_KEY, JSON.stringify(INV)); }catch(e){}
+  }
+
+  function loadData(){
+    var p = isCloud() ? loadAllCloud() : loadLocal();
+    return p.then(function(rows){
+      INV = rows;
+      if(isCloud() && INV.length===0){
+        return seedCloud(defaultItems()).then(function(){ return loadAllCloud(); })
+          .then(function(rows2){ INV = rows2; return INV; });
+      }
+      if(!isCloud() && INV.length===0){ INV = defaultItems(); persistLocal(); }
+      return INV;
+    });
+  }
+
+  function seedCloud(items){
+    var chain = Promise.resolve();
+    items.forEach(function(it){
+      chain = chain.then(function(){
+        return dbSdk.addRecord({databaseId:DATABASE_ID, properties:{
+          Name:{text:it.Name}, Category:{select:it.Category},
+          Quantity:{text:it.Quantity}, ExpireDate:{date:it.ExpireDate}, Status:{select:it.Status}
+        }});
+      });
+    });
+    return chain;
+  }
+
+  /* ============ 自种补给（Self_Grow 表） ============ */
+  var GROW = [];
+  function normGrow(rec){
+    return {
+      _id: rec._id || rec.record_id || ("g"+Math.random().toString(36).slice(2)),
+      Name: rec.Name, Stage: rec.Stage || "生长中",
+      Quantity: rec.Quantity || "", Note: rec.Note || ""
+    };
+  }
+  function defaultGrow(){
+    return [
+      {_id:"g0", Name:"香菜",  Stage:"可采收", Quantity:"一茬", Note:"水培，已发芽，随吃随掐"},
+      {_id:"g1", Name:"葱",    Stage:"可采收", Quantity:"一把", Note:"土培，剪了又长"},
+      {_id:"g2", Name:"绿豆芽", Stage:"生长中", Quantity:"半盘", Note:"水培，3-4 天出盘，可循环"}
+    ];
+  }
+  function loadGrowCloud(start, acc, guard){
+    start = start||undefined; acc = acc||[]; guard = (guard||0)+1;
+    if(guard>100) return Promise.resolve(acc);
+    return dbSdk.query({databaseId:GROW_DB_ID, pageSize:200, startCursor:start}).then(function(r){
+      acc = acc.concat((r.results||[]).map(normGrow));
+      var next = r.nextCursor;
+      if(r.hasMore && next && next!==start && (r.results||[]).length){
+        return loadGrowCloud(next, acc, guard);
+      }
+      return acc;
+    });
+  }
+  function loadGrow(){
+    if(isCloud()){
+      return loadGrowCloud().then(function(rows){
+        GROW = rows;
+        if(GROW.length===0){
+          var chain = Promise.resolve();
+          defaultGrow().forEach(function(it){
+            chain = chain.then(function(){
+              return dbSdk.addRecord({databaseId:GROW_DB_ID, properties:{
+                Name:{text:it.Name}, Stage:{select:it.Stage},
+                Quantity:{text:it.Quantity}, Note:{text:it.Note}
+              }});
+            });
+          });
+          return chain.then(function(){ return loadGrowCloud(); })
+            .then(function(r2){ GROW = r2; return GROW; });
+        }
+        return GROW;
+      }).catch(function(){ return loadGrowLocal(); });
+    }
+    return loadGrowLocal();
+  }
+  function loadGrowLocal(){
+    try{
+      var s = localStorage.getItem(LS_GROW);
+      if(s){ GROW = JSON.parse(s); return Promise.resolve(GROW); }
+    }catch(e){}
+    GROW = defaultGrow();
+    try{ localStorage.setItem(LS_GROW, JSON.stringify(GROW)); }catch(e){}
+    return Promise.resolve(GROW);
+  }
+  function persistGrowLocal(){ try{ localStorage.setItem(LS_GROW, JSON.stringify(GROW)); }catch(e){} }
+  function addGrow(rec){
+    if(isCloud()){
+      return dbSdk.addRecord({databaseId:GROW_DB_ID, properties:{
+        Name:{text:rec.Name}, Stage:{select:rec.Stage},
+        Quantity:{text:rec.Quantity}, Note:{text:rec.Note}
+      }}).then(function(){ return loadGrow(); });
+    }
+    rec._id = "g"+Math.random().toString(36).slice(2);
+    GROW.push(rec); persistGrowLocal(); return loadGrowLocal();
+  }
+  function updateGrow(id, props){
+    if(isCloud()){
+      return dbSdk.updateRecord({databaseId:GROW_DB_ID, recordId:id, properties:props})
+        .then(function(){ return loadGrow(); });
+    }
+    var rec = GROW.find(function(x){return x._id===id;});
+    if(rec){ for(var k in props){ rec[k] = (k==="Stage") ? props[k].select : props[k].text; } }
+    persistGrowLocal(); return loadGrowLocal();
+  }
+  function removeGrow(id){
+    if(isCloud()){
+      return dbSdk.deleteRecord({databaseId:GROW_DB_ID, recordId:id})
+        .then(function(){ return loadGrow(); });
+    }
+    GROW = GROW.filter(function(x){return x._id!==id;});
+    persistGrowLocal(); return loadGrowLocal();
+  }
+  // 可采收的自种作物名（供三餐抽签当作免费蔬菜池）
+  function harvestableGrowNames(){
+    return GROW.filter(function(x){ return x.Stage==="可采收"; })
+               .map(function(x){ return x.Name; });
+  }
+
+  /* ============ 每周 70 元专款（Weekly_Fund 表） ============ */
+  var FUND = [];
+  function normFund(rec){
+    return {
+      _id: rec._id || rec.record_id || ("f"+Math.random().toString(36).slice(2)),
+      Item: rec.Item, Cost: Number(rec.Cost)||0,
+      Category: rec.Category || "其他",
+      BuyDate: (rec.BuyDate||"").slice(0,10), Note: rec.Note || ""
+    };
+  }
+  function loadFundCloud(start, acc, guard){
+    start = start||undefined; acc = acc||[]; guard = (guard||0)+1;
+    if(guard>100) return Promise.resolve(acc);
+    return dbSdk.query({databaseId:FUND_DB_ID, pageSize:200, startCursor:start}).then(function(r){
+      acc = acc.concat((r.results||[]).map(normFund));
+      var next = r.nextCursor;
+      if(r.hasMore && next && next!==start && (r.results||[]).length){
+        return loadFundCloud(next, acc, guard);
+      }
+      return acc;
+    });
+  }
+  function loadFund(){
+    if(isCloud()){
+      return loadFundCloud().then(function(rows){ FUND = rows; return FUND; })
+        .catch(function(){ return loadFundLocal(); });
+    }
+    return loadFundLocal();
+  }
+  function loadFundLocal(){
+    try{
+      var s = localStorage.getItem(LS_FUND);
+      if(s){ FUND = JSON.parse(s); return Promise.resolve(FUND); }
+    }catch(e){}
+    FUND = []; return Promise.resolve(FUND);
+  }
+  function persistFundLocal(){ try{ localStorage.setItem(LS_FUND, JSON.stringify(FUND)); }catch(e){} }
+  function addFund(rec){
+    if(isCloud()){
+      var props = {Item:{text:rec.Item}, Cost:{number:rec.Cost}, Category:{select:rec.Category}};
+      if(rec.BuyDate) props.BuyDate = {date:rec.BuyDate};
+      if(rec.Note) props.Note = {text:rec.Note};
+      return dbSdk.addRecord({databaseId:FUND_DB_ID, properties:props})
+        .then(function(){ return loadFund(); });
+    }
+    rec._id = "f"+Math.random().toString(36).slice(2);
+    FUND.push(rec); persistFundLocal(); return loadFundLocal();
+  }
+  function removeFund(id){
+    if(isCloud()){
+      return dbSdk.deleteRecord({databaseId:FUND_DB_ID, recordId:id})
+        .then(function(){ return loadFund(); });
+    }
+    FUND = FUND.filter(function(x){return x._id!==id;});
+    persistFundLocal(); return loadFundLocal();
+  }
+  // 本周一 00:00 的时间戳（以周一为一周之始）
+  function weekStart(d){
+    var x = new Date(d||Date.now());
+    x.setHours(0,0,0,0);
+    var dow = x.getDay();            // 0=周日
+    var back = (dow===0) ? 6 : (dow-1);
+    x.setDate(x.getDate()-back);
+    return x;
+  }
+  function monthKey(d){
+    var x = (typeof d === "string") ? new Date(d+"T00:00:00") : new Date(d||Date.now());
+    if(isNaN(x.getTime())) return "";
+    return x.getFullYear()+"-"+("0"+(x.getMonth()+1)).slice(-2);
+  }
+
+  // 新增一条记录（用户自主录入）
+  function addItem(rec){
+    if(isCloud()){
+      var props = {Name:{text:rec.Name}, Category:{select:rec.Category},
+                   Quantity:{text:rec.Quantity}, Status:{select:rec.Status}};
+      if(rec.ExpireDate) props.ExpireDate = {date:rec.ExpireDate};
+      return dbSdk.addRecord({databaseId:DATABASE_ID, properties:props}).then(function(){ return reload(); });
+    } else {
+      rec._id = "local_"+Math.random().toString(36).slice(2);
+      INV.push(rec); persistLocal(); return reload();
+    }
+  }
+
+  function updateRecord(id, props){
+    if(isCloud()){
+      return dbSdk.updateRecord({databaseId:DATABASE_ID, recordId:id, properties:props})
+        .then(function(){ return reload(); });
+    } else {
+      var rec = INV.find(function(x){return x._id===id;});
+      if(rec){ for(var k in props){ if(k==="Quantity") rec.Quantity=props[k].text;
+        else if(k==="ExpireDate") rec.ExpireDate=props[k].date;
+        else if(k==="Status") rec.Status=props[k].select;
+        else if(k==="Category") rec.Category=props[k].select; } }
+      persistLocal(); return reload();
+    }
+  }
+
+  function reload(){
+    return loadData().then(function(){ renderAll(); });
+  }
+
+  function renderAll(){
+    renderDashboard(); renderInv(); renderPlan(); renderMenu();
+  }
+
+  /* ============ 渲染：自种补给 ============ */
+  function renderGrow(){
+    var grid = document.getElementById("cropGrid");
+    if(!GROW.length){
+      grid.innerHTML = '<div class="empty" style="grid-column:1/-1">还没有登记自种作物 · 上面「🌱 登记」把在长的东西记下来</div>';
+      return;
+    }
+    var stageColor = {"生长中":"#fef3c7;color:#b45309","可采收":"#dcfce7;color:#166534","已用完":"#f3f4f6;color:#6b7280"};
+    grid.innerHTML = GROW.map(function(c){
+      var tag = '<span class="c-status" style="background:'+ (stageColor[c.Stage]||"#ecfdf5;color:#047857") +'">'+escapeHtml(c.Stage)+'</span>';
+      var note = c.Note ? '<div class="c-meta">'+escapeHtml(c.Note)+'</div>' : '';
+      var qty = c.Quantity ? '<div class="c-meta">产量：'+escapeHtml(c.Quantity)+'</div>' : '';
+      var next = (c.Stage==="生长中")
+        ? '<button class="btn sm" data-grow-act="harvest" data-id="'+c._id+'">✅ 可采收了</button>'
+        : (c.Stage==="可采收"
+            ? '<button class="btn sm ghost" data-grow-act="used" data-id="'+c._id+'">🍽 这轮吃完了</button>'
+            : '<button class="btn sm ghost" data-grow-act="harvest" data-id="'+c._id+'">🌱 又长出来了</button>');
+      return '<div class="crop" data-id="'+c._id+'">'+
+        '<div class="c-name">'+escapeHtml(c.Name)+tag+'</div>'+
+        qty+note+
+        '<div class="c-actions">'+next+
+          '<button class="btn sm danger" data-grow-act="del" data-id="'+c._id+'">🗑 删除</button>'+
+        '</div></div>';
+    }).join("");
+  }
+
+  /* ============ 渲染：每周 70 元专款 ============ */
+  function renderFund(){
+    var sum = document.getElementById("fundSummary");
+    var body = document.getElementById("fundBody");
+    var ws = weekStart(new Date()).getTime();
+    var mk = monthKey(new Date());
+    var weekCost = 0, monthCost = 0, totalCost = 0;
+    FUND.forEach(function(f){
+      var c = Number(f.Cost)||0;
+      totalCost += c;
+      var ts = f.BuyDate ? new Date(f.BuyDate+"T00:00:00").getTime() : NaN;
+      if(!isNaN(ts) && ts >= ws) weekCost += c;
+      if(f.BuyDate && monthKey(f.BuyDate) === mk) monthCost += c;
+    });
+    var weekLeft = WEEKLY_CAP - weekCost;
+    var monthLeft = MONTHLY_CAP - monthCost;
+    sum.innerHTML =
+      '<div class="chip">本周预算 <b>'+WEEKLY_CAP+'</b> 元</div>'+
+      '<div class="chip">本周已花 <b>'+fmtNum(weekCost)+'</b> 元</div>'+
+      '<div class="chip'+(weekLeft<0?' alert':'')+'">本周剩余 <b>'+fmtNum(weekLeft)+'</b> 元'+(weekLeft<0?'（超支）':'')+'</div>'+
+      '<div class="chip">本月已花 <b>'+fmtNum(monthCost)+'</b> / '+MONTHLY_CAP+' 元</div>'+
+      '<div class="chip'+(monthLeft<0?' alert':'')+'">本月剩余 <b>'+fmtNum(monthLeft)+'</b> 元</div>'+
+      '<div class="chip">累计投入 <b>'+fmtNum(totalCost)+'</b> 元</div>';
+
+    if(!FUND.length){
+      body.innerHTML = '<tr><td colspan="5" class="empty">本周还没记账 · 买了就记一笔，才知道额度花在哪</td></tr>';
+      return;
+    }
+    var list = FUND.slice().sort(function(a,b){
+      return (a.BuyDate||"") < (b.BuyDate||"") ? 1 : ((a.BuyDate||"") > (b.BuyDate||"") ? -1 : 0);
+    });
+    body.innerHTML = list.map(function(f){
+      return '<tr data-id="'+f._id+'">'+
+        '<td>'+escapeHtml(f.BuyDate||"—")+'</td>'+
+        '<td>'+escapeHtml(f.Item)+'</td>'+
+        '<td>'+escapeHtml(f.Category)+'</td>'+
+        '<td><b>'+fmtNum(Number(f.Cost)||0)+'</b> 元</td>'+
+        '<td><button class="btn sm danger" data-fund-act="del" data-id="'+f._id+'">删除</button></td>'+
+      '</tr>';
+    }).join("");
+  }
+
+  /* ============ 工具 ============ */
+  function qtyNum(q){ var m=String(q||"").match(/-?\d+(\.\d+)?/); return m?parseFloat(m[0]):0; }
+  function inStock(name){
+    var r = INV.find(function(x){return x.Name===name;});
+    return !!(r && r.Status==="待消耗" && qtyNum(r.Quantity)>0);
+  }
+  function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+  function avail(pool){ return pool.filter(function(p){ return inStock(p.name); }); }
+
+  // 解析数量文本：拆分数字与单位，判断是否为「按个计数」类
+  function parseQty(q){
+    var s = String(q||"").trim();
+    var m = s.match(/(-?\d+(?:\.\d+)?)\s*([一-龥A-Za-z%]*)/);
+    if(!m) return {num:0, unit:"", isCount:false};
+    var num = parseFloat(m[1]);
+    var unit = m[2] || "";
+    var countUnits = {个:1,张:1,根:1,瓶:1,包:1,罐:1,颗:1,粒:1,支:1,条:1,盒:1,袋:1,块:1,只:1,双:1,卷:1,枚:1,把:1,本:1,支:1};
+    var isCount = Object.prototype.hasOwnProperty.call(countUnits, unit) || unit==="";
+    return {num:num, unit:unit, isCount:isCount};
+  }
+
+  // 距今天数（含正负）：null 表示未设期限
+  function daysLeft(dateStr){
+    if(!dateStr) return null;
+    var t = new Date(dateStr+"T00:00:00");
+    if(isNaN(t.getTime())) return null;
+    var n = new Date(); n.setHours(0,0,0,0);
+    return Math.round((t - n) / 86400000);
+  }
+
+  function fmtNum(v){
+    var r = Math.round(v*10)/10;
+    return (r % 1 === 0) ? String(r) : r.toFixed(1);
+  }
+
+  function escapeHtml(s){
+    return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+  }
+  function escapeAttr(s){ return escapeHtml(s); }
+
+  /* ============ 消耗计划：单日合理上限（严禁“一天吃完剩余全部”） ============ */
+  // g = 按 g/kg 计的每日上限；count = 按个/根/包等计数的每日上限
+  var DAY_CAP = {
+    "蔬菜":{g:300, count:2}, "水果":{g:300, count:3}, "肉类":{g:200, count:3},
+    "主食":{g:300, count:2}, "零食":{g:80,  count:3}, "调料":{g:30,  count:1},
+    "日用品":{count:1}, "清洁用品":{count:1}, "药品":{count:1},
+    "文具":{count:1}, "工具":{count:1}, "宠物用品":{count:1}, "其他":{count:1}
+  };
+  function capOf(cat){ return DAY_CAP[cat] || {g:100, count:1}; }
+
+  // 建议量 = min(剩余量÷剩余天数, 分类单日上限)；over = 期限内按上限也吃不完，需提示优先处理
+  function quotaFor(rec){
+    var dl = daysLeft(rec.ExpireDate);
+    var eff = Math.max(1, dl);
+    var p = parseQty(rec.Quantity);
+    var cap = capOf(rec.Category);
+    var capNum = p.isCount ? cap.count : cap.g;
+    var base = p.num / eff;
+    var quota = Math.min(base, capNum);
+    return {dl:dl, p:p, base:base, quota:quota, over: base > capNum, unit:p.unit, isCount:p.isCount};
+  }
+
+  /* ============ 写死的烹饪规则字典（严禁随机数乱搭） ============ */
+  var COOK = {
+    breakfast:{
+      drinks:[
+        {name:"奶粉",      show:"热牛奶", cook:"冲泡", tip:"奶粉用温水冲开，别煮沸免得结块"},
+        {name:"咖啡浓缩液", show:"黑咖啡", cook:"冲",   tip:"浓缩液直接加热水稀释，浓淡随口味"},
+        {name:"茶包",      show:"清茶",   cook:"泡",    tip:"85℃热水泡3分钟，第二泡更回甘"}
+      ],
+      staples:[
+        {name:"麦片",   cook:"麦片糊", tip:"麦片用热水或热牛奶边倒边搅成糊"},
+        {name:"水饺",   cook:"煮",     tip:"水开下饺，点两次凉水，浮起即熟"},
+        {name:"面饼",   cook:["汤面","拌面"], tip:"面煮熟过凉更筋道；拌面淋点蒜头油/木姜子油更香"},
+        {name:"烤鸭饼", cook:"蒸",     tip:"蒸锅上汽蒸3分钟，软而不干"}
+      ],
+      forbid:[ {drink:"黑咖啡", staple:"水饺"} ]
+    },
+    lunch:{
+      meats:[
+        {name:"福鼎肉片", soup:true,  methods:["冬阴功煮","红酸汤煮","清炒"]},
+        {name:"鸡肉肠",   soup:false, methods:["清炒","煮"]},
+        {name:"金华火腿", soup:false, methods:["清炒","炖"], combo:true}
+      ],
+      vegs:[
+        {name:"生菜",   soupOk:true,  methods:["清炒","冬阴功煮","红酸汤煮"]},
+        {name:"大白菜", soupOk:true,  methods:["清炒","冬阴功煮","红酸汤煮"]},
+        {name:"土豆",   soupOk:false, methods:["清炒","炖"]},
+        {name:"胡萝卜", soupOk:false, methods:["清炒","炖"]}
+      ],
+      staples:[
+        {name:"面饼", soupOk:true,  methods:["冬阴功煮","红酸汤煮","清炒"]},
+        {name:"大米", soupOk:false, methods:["蒸"]}
+      ]
+    },
+    dinner:{
+      staples:[
+        {name:"水饺",   show:"煮水饺",   m:"煮",     tip:"水开下饺，点两次凉水，浮起即熟"},
+        {name:"大米",   show:"蒸米饭",   m:"蒸米饭", tip:"晚上熬稀饭更轻负：米多加水，小火熬20分钟"},
+        {name:"长糯米", show:"糯米稀饭", m:"煮",     tip:"糯米先泡半小时，小火熬成稀饭更好消化"},
+        {name:"烤鸭饼", show:"蒸烤鸭饼", m:"蒸",     tip:"上汽蒸3分钟，软而不干"},
+        {name:"面饼",   show:["汤面","拌面"], m:["汤面","拌面"], tip:"晚上推荐汤面，热乎易消化"},
+        {name:"干猫豆", show:"煮干猫豆", m:"炖",     tip:"豆子提前泡2小时，小火煮软加点盐"}
+      ],
+      vegs:[
+        {name:"大白菜", show:"清炒大白菜", m:"清炒", tip:"热锅少油快炒，断生即起"},
+        {name:"生菜",   show:"白灼生菜",   m:"白灼", tip:"沸水焯30秒捞起，淋点蒜头油"},
+        {name:"土豆",   show:["清炒土豆丝","清蒸土豆"], m:["清炒","蒸"], tip:"土豆丝切好过水去淀粉，炒出来更爽脆"},
+        {name:"胡萝卜", show:"清炒胡萝卜", m:"清炒", tip:"胡萝卜用油炒更有利吸收"}
+      ]
+    }
+  };
+  var UNIT = {
+    "麦片":"1包","奶粉":"1勺","咖啡浓缩液":"1包","茶包":"1包",
+    "水饺":"约150g","面饼":"1个","烤鸭饼":"1张",
+    "福鼎肉片":"100g","鸡肉肠":"1根","金华火腿":"50g",
+    "生菜":"200g","大白菜":"200g","土豆":"200g","胡萝卜":"150g","大米":"1碗",
+    "长糯米":"50g","干猫豆":"50g"
+  };
+  function unitOf(name){ return UNIT[name] || "适量"; }
+  function noodleShow(cookVerb){
+    if(cookVerb === "清炒") return "炒面";
+    return cookVerb + "面";
+  }
+
+  /* ============ 自种作物 → 三餐蔬菜池（零成本，永远有货） ============ */
+  // A. 能独立成一道菜的（可进蔬菜池）
+  var SELF_GROW_DISH = {
+    "绿豆芽":{show:["清炒豆芽","凉拌豆芽"],     m:["清炒","凉拌"]},
+    "豆芽":  {show:["清炒豆芽","凉拌豆芽"],     m:["清炒","凉拌"]},
+    "黄豆芽":{show:["清炒豆芽","凉拌豆芽"],     m:["清炒","凉拌"]},
+    "生菜":  {show:["白灼生菜","清炒生菜"],     m:["白灼","清炒"]},
+    "大白菜":{show:["清炒大白菜","炖白菜"],     m:["清炒","炖"]},
+    "小白菜":{show:["清炒小白菜","上汤小白菜"], m:["清炒","炖"]},
+    "油菜":  {show:["清炒油菜","上汤油菜"],     m:["清炒","炖"]},
+    "萝卜":  {show:["清炒萝卜丝","炖萝卜"],     m:["清炒","炖"]},
+    "红萝卜":{show:["清炒萝卜丝","炖萝卜"],     m:["清炒","炖"]},
+    "菠菜":  {show:["清炒菠菜","凉拌菠菜"],     m:["清炒","凉拌"]},
+    "空心菜":{show:["清炒空心菜","蒜蓉空心菜"], m:["清炒","蒜蓉"]},
+    "韭菜":  {show:["清炒韭菜","凉拌韭菜"],     m:["清炒","凉拌"]},
+    "莴笋":  {show:["清炒莴笋丝","凉拌莴笋"],   m:["清炒","凉拌"]},
+    "番茄":  {show:["凉拌番茄","番茄炒蛋"],     m:["凉拌","清炒"]},
+    "黄瓜":  {show:["凉拌黄瓜","拍黄瓜"],       m:["凉拌","凉拌"]},
+    "苦瓜":  {show:["清炒苦瓜","凉拌苦瓜"],     m:["清炒","凉拌"]}
+  };
+  // B. 只能当点缀的（不能独立成一道菜，只在出餐时撒一把）
+  var SELF_GROW_GARNISH = {
+    "香菜":{show:"撒香菜",     m:"点缀"},
+    "葱":  {show:"撒葱花",     m:"点缀"},
+    "小葱":{show:"撒葱花",     m:"点缀"},
+    "蒜苗":{show:"撒蒜苗",     m:"点缀"},
+    "罗勒":{show:"撒罗勒",     m:"点缀"}
+  };
+  // 自种作物在消耗清单里的标识：不占库存、不花钱
+  function growUnit(name){ return "自种·一把·0元"; }
+
+  // 能独立成菜的 → 进蔬菜池
+  // 同时给出 methods（午餐用：动词+菜名）与 show/m（晚餐用：整道菜名）
+  function selfGrowVegs(){
+    var out = [];
+    harvestableGrowNames().forEach(function(n){
+      var ck = SELF_GROW_DISH[n];
+      if(!ck) return;
+      out.push({
+        name:n, selfGrown:true, soupOk:false, soup:false,
+        methods:ck.m.slice(),   // 午餐：清炒 / 凉拌 …
+        show:ck.show.slice(),   // 晚餐：清炒豆芽 / 凉拌豆芽 …
+        m:ck.m.slice()
+      });
+    });
+    return out;
+  }
+  // 只能点缀的 → 随餐撒一把
+  function selfGrowGarnish(){
+    var out = [];
+    harvestableGrowNames().forEach(function(n){
+      var ck = SELF_GROW_GARNISH[n];
+      if(!ck) return;
+      out.push({name:n, selfGrown:true, show:ck.show, m:ck.m});
+    });
+    return out;
+  }
+
+  // 合并库存蔬菜 + 自种蔬菜，同名去重（库存优先，避免一道菜里出现两个「生菜」）
+  function mergeVegs(stockPool, growPool){
+    var seen = {};
+    stockPool.forEach(function(v){ seen[v.name] = true; });
+    return stockPool.concat(growPool.filter(function(v){ return !seen[v.name]; }));
+  }
+
+  var METHOD_TIP = {
+    "冬阴功煮":"冬阴功汤底加清水煮沸，下食材煮3分钟入味",
+    "红酸汤煮":"红酸汤加水煮开，酸辣开胃",
+    "清炒":"热锅少油快炒，断生即起保脆嫩",
+    "炖":"小火慢炖，食材软烂入味",
+    "蒸米饭":"大米洗净水没过一指，煮成粒粒分明",
+    "煮":"水开下锅，点两次凉水，浮起即熟",
+    "蒸":"上汽后蒸3分钟，软而不干",
+    "麦片糊":"麦片用热水或热牛奶边倒边搅成糊",
+    "汤面":"沸水下面煮2-3分钟，捞起即食",
+    "拌面":"面煮熟过凉，拌入蒜头油/木姜子油更香",
+    "白灼":"沸水焯30秒左右，保持脆嫩",
+    "凉拌":"焯水过凉后加蒜头油/香醋/生抽拌匀",
+    "点缀":"起锅前撒一把，香气立刻上来",
+    "蒜蓉":"蒜末爆香后下菜，大火快炒",
+    "黑咖啡":"浓缩液加热水稀释，比例随口味",
+    "热牛奶":"奶粉用温水冲开，不宜煮沸",
+    "清茶":"85℃热水泡3分钟"
+  };
+
+  /* ============ 抽签算法（融合数量与保质期，写死搭配规则） ============ */
+  function drawBreakfast(){
+    var d = avail(COOK.breakfast.drinks);
+    var s = avail(COOK.breakfast.staples);
+    // 缺组降级：饮品、主食只要有一组有货就能出餐
+    if(!d.length && !s.length) return noStock();
+    var drink = d.length ? pick(d) : null;
+    var staple = s.length ? pick(s) : null;
+    if(drink && staple){
+      var tries = 0;
+      do {
+        drink = pick(d); staple = pick(s); tries++;
+      } while(tries < 12 && COOK.breakfast.forbid.some(function(f){
+        return f.drink === drink.show && f.staple === staple.name;
+      }));
+      var sShow;
+      if(staple.name === "麦片") sShow = "麦片糊";
+      else if(staple.name === "面饼") sShow = Array.isArray(staple.cook) ? pick(staple.cook) : staple.cook;
+      else sShow = staple.cook + staple.name;
+      var title = sShow + " + " + drink.show;
+      var consume = [staple.name+"·"+unitOf(staple.name), drink.name+"·"+unitOf(drink.name)];
+      var tip = (staple.tip||"") + (drink.tip ? ("；"+drink.tip) : "");
+      return {title:title, consume:consume, tip:tip};
+    }
+    if(staple){
+      var ss;
+      if(staple.name === "麦片") ss = "麦片糊";
+      else if(staple.name === "面饼") ss = Array.isArray(staple.cook) ? pick(staple.cook) : staple.cook;
+      else ss = staple.cook + staple.name;
+      return {title:ss, consume:[staple.name+"·"+unitOf(staple.name)],
+              tip:(staple.tip||"") + "；冲饮暂时没库存，记得补水"};
+    }
+    return {title:drink.show, consume:[drink.name+"·"+unitOf(drink.name)],
+            tip:(drink.tip||"") + "；主食暂时没库存，先喝一杯垫垫"};
+  }
+
+  function drawLunch(){
+    var meats = avail(COOK.lunch.meats);
+    var vegs  = mergeVegs(avail(COOK.lunch.vegs), selfGrowVegs());
+    var stap  = avail(COOK.lunch.staples);
+    // 缺组降级：三组里至少有两组有货就能出餐（只缺肉→素餐；只缺菜/主食→两样照搭）
+    if(meats.length + vegs.length + stap.length < 2) return noStock();
+
+    var meat    = meats.length ? pick(meats) : null;
+    var staple  = stap.length  ? pick(stap)  : null;
+    var vegPick = [];
+    if(vegs.length){
+      var vcount = Math.min(vegs.length, Math.random()<0.5?1:2);
+      vegPick = vegs.slice().sort(function(){return Math.random()-0.5;}).slice(0, vcount);
+    }
+
+    var bases = [];
+    if(inStock("冬阴功汤底")) bases.push("冬阴功");
+    if(inStock("贵州红酸汤")) bases.push("红酸汤");
+    var soupOkAll = (!staple || staple.soupOk) && vegPick.every(function(v){return v.soupOk;});
+    var useSoup = !!(bases.length && meat && meat.soup && soupOkAll && Math.random()<0.6);
+    var base = useSoup ? pick(bases) : "";
+
+    function cookOf(item, isSoupItem){
+      if(useSoup && isSoupItem){
+        var soupM = item.methods.filter(function(m){return m.indexOf(base)===0;});
+        return soupM.length ? soupM[0] : item.methods[item.methods.length-1];
+      }
+      var dry = item.methods.filter(function(m){ return m.indexOf("冬阴功")!==0 && m.indexOf("红酸汤")!==0; });
+      return dry.length ? pick(dry) : item.methods[0];
+    }
+    function joinM(m){ return m === "清炒" ? "炒" : m; }
+
+    var parts = [];
+    var consume = [];
+    var methods = [];
+    var comboRest = null;
+    // 主食
+    if(staple){
+      var sPart;
+      if(staple.name==="大米"){ sPart = "蒸米饭"; methods.push("蒸米饭"); }
+      else if(staple.name==="面饼"){
+        sPart = noodleShow(cookOf(staple, staple.soupOk));
+        methods.push(sPart==="炒面" ? "清炒" : sPart.slice(0,4));
+      }
+      else { var sc = cookOf(staple, staple.soupOk); sPart = sc + staple.name; methods.push(sc); }
+      parts.push(sPart); consume.push(staple.name+"·"+unitOf(staple.name));
+    }
+    // 肉（缺肉则整餐转素）
+    if(meat){
+      if(meat.combo && !useSoup && vegPick.length){
+        // 金华火腿必须与「温和蔬菜」同炒（绝不清炒火腿单独一盘）
+        var mild = vegPick.filter(function(v){ return ["大白菜","土豆","胡萝卜"].indexOf(v.name) >= 0; });
+        var comboVeg = (mild.length ? mild : vegPick).slice(0,1)[0];
+        comboRest = vegPick.filter(function(v){ return v !== comboVeg; });
+        // 火腿做法必须与配菜做法兼容（豆芽只能清炒，不能炖）
+        var vegMethods = comboVeg.selfGrown
+          ? (comboVeg.methods||[])
+          : comboVeg.methods.filter(function(m){ return m.indexOf("冬阴功")!==0 && m.indexOf("红酸汤")!==0; });
+        var cand = meat.methods.filter(function(m){
+          if(m.indexOf("冬阴功")===0 || m.indexOf("红酸汤")===0) return false;
+          if(!vegMethods.length) return true;
+          return vegMethods.indexOf(m)>=0;
+        });
+        var verb = pick(cand.length ? cand : meat.methods.filter(function(m){
+          return m.indexOf("冬阴功")!==0 && m.indexOf("红酸汤")!==0; }));
+        parts.push(meat.name + joinM(verb) + comboVeg.name);
+        consume.push(meat.name+"·"+unitOf(meat.name));
+        consume.push(comboVeg.name+"·"+(comboVeg.selfGrown ? growUnit(comboVeg.name) : unitOf(comboVeg.name)));
+        methods.push(verb);
+      } else {
+        var mCook = useSoup ? cookOf(meat, true) : (meat.methods.filter(function(m){return m.indexOf(base)!==0;})[0]||meat.methods[0]);
+        parts.push(mCook + meat.name); consume.push(meat.name+"·"+unitOf(meat.name)); methods.push(mCook);
+      }
+    }
+    // 蔬菜（火腿合炒已消耗一个则只补剩下的）
+    var vegList = (comboRest !== null) ? comboRest : vegPick;
+    vegList.forEach(function(v){
+      if(v.selfGrown){
+        // 自种蔬菜：直接用写死的整道菜名（如「凉拌豆芽」），不参与汤底判定
+        var gShow = Array.isArray(v.show) ? pick(v.show) : v.show;
+        parts.push(gShow);
+        consume.push(v.name+"·"+growUnit(v.name));
+        var gM = Array.isArray(v.m) ? v.m[(Array.isArray(v.show)?v.show:[]).indexOf(gShow)] : v.m;
+        methods.push(gM || "清炒");
+        return;
+      }
+      var vCook = (useSoup && v.soupOk) ? cookOf(v, true) : (v.methods.filter(function(m){return m.indexOf(base)!==0;})[0]||"清炒");
+      parts.push(vCook + v.name);
+      consume.push(v.name+"·"+unitOf(v.name));
+      methods.push(vCook);
+    });
+
+    var tips = [];
+    methods.forEach(function(m){ var t = METHOD_TIP[m]; if(t && tips.indexOf(t)===-1) tips.push(t); });
+    var prefix;
+    if(useSoup) prefix = "【"+base+"风味】";
+    else if(!meat) prefix = "【素食轻炒】";
+    else prefix = "【家常小炒】";
+    // 自种香草点缀（零成本，不占库存）
+    var garnish = selfGrowGarnish();
+    if(garnish.length){
+      var g = pick(garnish);
+      parts.push(g.show);
+      consume.push(g.name+"·"+growUnit(g.name));
+      methods.push(g.m);
+      var gt = METHOD_TIP[g.m]; if(gt && tips.indexOf(gt)===-1) tips.push(gt);
+    }
+    return {title: prefix + parts.join(" + "), consume:consume, tip:tips.join("；")};
+  }
+
+  function drawDinner(){
+    var staps = avail(COOK.dinner.staples);
+    var vegs  = mergeVegs(avail(COOK.dinner.vegs), selfGrowVegs());
+    // 缺组降级：主食、蔬菜只要有一组有货就能出餐，不再直接报库存不足
+    if(!staps.length && !vegs.length) return noStock();
+    var parts = [], consume = [], methods = [], extraTips = [];
+    if(staps.length){
+      var s = pick(staps);
+      var sShow = Array.isArray(s.show) ? pick(s.show) : s.show;
+      var sM = Array.isArray(s.m) ? s.m[(Array.isArray(s.show)?s.show:[]).indexOf(sShow)] : s.m;
+      parts.push(sShow); consume.push(s.name+"·"+unitOf(s.name));
+      methods.push(sM); if(s.tip) extraTips.push(s.tip);
+    }
+    if(vegs.length){
+      var shuffled = vegs.slice().sort(function(){return Math.random()-0.5;});
+      var vcount = (shuffled.length>1 && Math.random()<0.5) ? 2 : 1;
+      shuffled.slice(0,vcount).forEach(function(v){
+        var vShow = Array.isArray(v.show) ? pick(v.show) : v.show;
+        var vM = Array.isArray(v.m) ? v.m[(Array.isArray(v.show)?v.show:[]).indexOf(vShow)] : v.m;
+        parts.push(vShow);
+        consume.push(v.name+"·"+(v.selfGrown ? growUnit(v.name) : unitOf(v.name)));
+        methods.push(vM); if(v.tip) extraTips.push(v.tip);
+      });
+    }
+    var tips = extraTips.slice();
+    methods.forEach(function(m){ var t = METHOD_TIP[m]; if(t && tips.indexOf(t)===-1) tips.push(t); });
+    // 自种香草点缀（零成本，不占库存）
+    var garnish = selfGrowGarnish();
+    if(garnish.length){
+      var g = pick(garnish);
+      parts.push(g.show);
+      consume.push(g.name+"·"+growUnit(g.name));
+      methods.push(g.m);
+      var gt = METHOD_TIP[g.m]; if(gt && tips.indexOf(gt)===-1) tips.push(gt);
+    }
+    return {title:"【轻负晚餐】" + parts.join(" + "), consume:consume, tip:tips.join("；")};
+  }
+
+  function noStock(){
+    return {title:"库存不足，去补给一下吧 🛒", consume:["部分食材已吃完或数量为 0，不参与推荐"]};
+  }
+
+  function renderMeal(meal, fn){
+    var box = document.getElementById("res-"+meal);
+    var r = fn();
+    var html = '<div class="title">'+ r.title +'</div>';
+    if(r.consume && r.consume.length){
+      html += '<div class="consume">需消耗：'+
+        r.consume.map(function(c){return "<span>"+escapeHtml(c)+"</span>";}).join("") + '</div>';
+    }
+    if(r.tip){ html += '<div class="tip">💡 '+escapeHtml(r.tip)+'</div>'; }
+    box.innerHTML = html;
+  }
+
+  /* ============ 渲染：库存仪表盘 ============ */
+  function activeItems(){ return INV.filter(function(x){return x.Status==="待消耗" && qtyNum(x.Quantity)>0;}); }
+
+  function renderDashboard(){
+    var list = activeItems();
+    document.getElementById("statTotal").textContent = list.length + " 项";
+    var urgent = list.filter(function(x){ var d=daysLeft(x.ExpireDate); return d!==null && d<=7; });
+    document.getElementById("statUrgent").textContent = urgent.length + " 项";
+
+    var withExp = list.filter(function(x){ return daysLeft(x.ExpireDate)!==null; })
+                      .sort(function(a,b){ return a.ExpireDate<b.ExpireDate?-1:1; });
+    var ear = document.getElementById("statEarliest");
+    if(withExp.length){
+      ear.innerHTML = escapeHtml(withExp[0].Name) + " · <b style='color:#b91c1c'>"+withExp[0].ExpireDate+"</b>";
+    } else { ear.textContent = "无"; }
+
+    var top3 = withExp.slice(0,3);
+    var box = document.getElementById("warnBox");
+    if(!top3.length){ box.innerHTML = "暂无临期物品"; return; }
+    box.innerHTML = top3.map(function(r){
+      return '<div class="warn-item">'+escapeHtml(r.Name)+' · 余'+escapeHtml(r.Quantity)+
+             ' · <b>'+r.ExpireDate+'</b></div>';
+    }).join("");
+  }
+
+  /* ============ 渲染：库存表格 ============ */
+  function renderInv(){
+    var body = document.getElementById("invBody");
+    var list = INV.filter(function(x){return x.Status==="待消耗";});
+    if(!list.length){
+      body.innerHTML = '<tr><td colspan="6" class="empty">🎉 库存已清空，全部「已光盘」！</td></tr>';
+      return;
+    }
+    var html = list.map(function(r){
+      return '<tr data-id="'+r._id+'">'+
+        '<td>'+escapeHtml(r.Name)+'</td>'+
+        '<td class="cat-cell" data-cat="'+escapeAttr(r.Category)+'"><span class="cat-pill editable" title="点击修改分类">'+escapeHtml(r.Category)+'</span></td>'+
+        '<td><input type="text" class="qty" value="'+escapeAttr(r.Quantity)+'"></td>'+
+        '<td class="exp">'+escapeHtml(r.ExpireDate||"—")+'</td>'+
+        '<td><span class="cat-pill">'+escapeHtml(r.Status)+'</span></td>'+
+        '<td><div class="ops">'+
+          '<button class="btn sm" data-act="save">💾 保存</button>'+
+          '<button class="btn sm ghost" data-act="edit">📅 编辑</button>'+
+          '<button class="btn sm danger" data-act="finish">✅ 已光盘</button>'+
+        '</div></td>'+
+      '</tr>';
+    }).join("");
+    body.innerHTML = html;
+  }
+
+  /* ============ 渲染：消耗计划 ============ */
+  function buildPlan(){
+    var list = activeItems().filter(function(x){ return daysLeft(x.ExpireDate)!==null; });
+    return list.map(function(x){
+      var q = quotaFor(x);
+      return {rec:x, name:x.Name, cat:x.Category, qty:x.Quantity, exp:x.ExpireDate,
+              dl:q.dl, quota:q.quota, over:q.over, unit:q.unit, isCount:q.isCount};
+    }).sort(function(a,b){ return a.dl - b.dl; });
+  }
+
+  function renderPlan(){
+    var plan = buildPlan();
+    // 摘要
+    var total = activeItems().length;
+    var urgent = plan.filter(function(p){ return p.dl<=7; }).length;
+    var sum = document.getElementById("planSummary");
+    sum.innerHTML =
+      '<div class="chip">待消耗 <b>'+total+'</b> 项</div>'+
+      '<div class="chip">已纳入计划 <b>'+plan.length+'</b> 项</div>'+
+      '<div class="chip">临期(≤7天) <b>'+urgent+'</b> 项</div>';
+
+    // 今日优先消耗：剩余天数 ≤ 14，建议量已按分类上限封顶
+    var today = plan.filter(function(p){ return p.dl<=14; });
+    var tg = document.getElementById("planToday");
+    if(!today.length){
+      tg.innerHTML = '<div class="empty">近两周无临期物品，继续保持 👍</div>';
+    } else {
+      tg.innerHTML = today.map(function(p){
+        var cls = p.dl<=3 ? "urg" : (p.dl<=7 ? "mid" : "ok");
+        var dayTxt = p.dl<0 ? "已到期" : (p.dl===0 ? "今天到期" : ("剩 "+p.dl+" 天"));
+        var quotaTxt = (p.isCount && p.quota<1) ? ("约 "+fmtNum(p.quota*7)+p.unit+"/周") : ("≤ "+fmtNum(p.quota)+p.unit+"/天");
+        var overTxt = p.over ? '<div style="color:#b45309;font-size:12px;margin-top:4px">⚠️ 期限内按合理节奏吃不完，建议尽快处理或分享，不必硬撑</div>' : '';
+        return '<div class="today-card">'+
+          '<div class="tc-head"><span class="cat-pill">'+escapeHtml(p.cat)+'</span>'+escapeHtml(p.name)+
+            '<span class="tc-days '+cls+'">'+dayTxt+'</span></div>'+
+          '<div class="tc-body">剩余 <b>'+escapeHtml(p.qty)+'</b> · 建议每日 '+quotaTxt+'</div>'+
+          overTxt+
+          '<button class="btn sm" data-act="consume" data-id="'+p.rec._id+'">消耗今日份额</button>'+
+        '</div>';
+      }).join("");
+    }
+  }
+
+  // 消耗今日份额：按封顶后的建议量扣减；扣完则标记已光盘
+  function consumeToday(id){
+    var rec = INV.find(function(x){return x._id===id;});
+    if(!rec) return;
+    var q = quotaFor(rec);
+    var step = Math.max(1, Math.round(q.quota));
+    var newNum = q.p.num - step;
+    if(newNum <= 0){
+      var props = {Status:{select:"已吃完"}};
+      if(q.p.unit) props.Quantity = {text:"0"+q.p.unit};
+      updateRecord(id, props);
+    } else {
+      var ns = (newNum % 1 === 0) ? String(newNum) : newNum.toFixed(1);
+      updateRecord(id, {Quantity:{text: ns + q.p.unit}});
+    }
+  }
+
+  /* ============ 库存操作（事件委托） ============ */
+  function bindInv(){
+    var body = document.getElementById("invBody");
+    body.addEventListener("click", function(e){
+      // 点击「分类」标签 → 行内修改分类
+      var pill = e.target.closest(".cat-pill.editable");
+      if(pill){
+        var pTr = pill.closest("tr");
+        openCatEditor(pTr, pTr.getAttribute("data-id"));
+        return;
+      }
+      var btn = e.target.closest("button"); if(!btn) return;
+      var tr = btn.closest("tr"); if(!tr) return;
+      var id = tr.getAttribute("data-id");
+      var act = btn.getAttribute("data-act");
+
+      if(act==="save"){
+        var v = tr.querySelector(".qty").value.trim();
+        updateRecord(id, {Quantity:{text:v}}).then(function(){
+          toast(btn, "已保存");
+        });
+      }
+      else if(act==="finish"){
+        updateRecord(id, {Status:{select:"已吃完"}});
+      }
+      else if(act==="edit"){
+        openDateEditor(tr, id);
+      }
+    });
+  }
+
+  // 行内编辑分类：把标签换成下拉框，选中即保存
+  function openCatEditor(tr, id){
+    var td = tr.querySelector(".cat-cell");
+    if(!td || td.querySelector("select.cat-edit")) return;
+    var cur = td.getAttribute("data-cat") || "";
+    var sel = document.createElement("select");
+    sel.className = "cat-edit";
+    sel.innerHTML = CATEGORIES.map(function(c){
+      return "<option value=\""+c+"\""+(c===cur?" selected":"")+">"+c+"</option>";
+    }).join("");
+    sel.style.cssText = "padding:4px 6px;border:1px solid var(--green);border-radius:8px;font-size:13px;background:#fff;color:var(--ink)";
+    td.innerHTML = "";
+    td.appendChild(sel);
+    sel.focus();
+
+    var done = false;
+    function revert(){ if(!done){ done = true; renderInv(); } }
+    sel.addEventListener("change", function(){
+      var nv = sel.value;
+      if(nv === cur){ done = true; renderInv(); return; }
+      done = true;
+      updateRecord(id, {Category:{select:nv}}).then(function(){
+        flash("分类已更新为「"+nv+"」");
+      });
+    });
+    sel.addEventListener("blur", function(){
+      if(!document.body.contains(sel)) return;
+      if(sel.value === cur) revert();
+    });
+  }
+
+  // 页面级轻提示
+  function flash(msg){
+    var el = document.getElementById("catFlash");
+    if(!el){
+      el = document.createElement("div");
+      el.id = "catFlash";
+      el.style.cssText = "position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:#065f46;color:#fff;padding:8px 16px;border-radius:999px;font-size:13px;box-shadow:0 6px 18px rgba(0,0,0,.2);z-index:9999;transition:opacity .25s;opacity:0;pointer-events:none";
+      document.body.appendChild(el);
+    }
+    el.textContent = msg;
+    el.style.opacity = "1";
+    clearTimeout(el._t);
+    el._t = setTimeout(function(){ el.style.opacity = "0"; }, 1500);
+  }
+
+  function openDateEditor(tr, id){
+    var td = tr.querySelector(".exp");
+    if(td.querySelector("input[type=date]")) return;
+    var cur = (td.textContent||"").trim();
+    if(cur==="—") cur = "";
+    td.innerHTML = '<input type="date" class="exp-input" value="'+cur+'">';
+    var confirm = document.createElement("button");
+    confirm.className = "btn sm"; confirm.textContent = "✓ 确认";
+    var cancel = document.createElement("button");
+    cancel.className = "btn sm ghost"; cancel.textContent = "✕";
+    var opTd = tr.querySelector(".ops");
+    opTd.insertBefore(confirm, opTd.firstChild);
+    opTd.insertBefore(cancel, opTd.firstChild);
+
+    confirm.addEventListener("click", function(){
+      var val = td.querySelector(".exp-input").value;
+      if(val){
+        updateRecord(id, {ExpireDate:{date:val}});
+      } else { td.textContent = cur || "—"; }
+      cleanup();
+    });
+    cancel.addEventListener("click", function(){ td.textContent = cur || "—"; cleanup(); });
+    function cleanup(){
+      if(confirm.parentNode) confirm.parentNode.removeChild(confirm);
+      if(cancel.parentNode) cancel.parentNode.removeChild(cancel);
+    }
+  }
+
+  function toast(btn, msg){
+    var old = btn.textContent; btn.textContent = msg;
+    setTimeout(function(){ btn.textContent = old; }, 1200);
+  }
+
+  /* ============ 消耗计划操作（事件委托） ============ */
+  function bindPlan(){
+    var sec = document.getElementById("planSection");
+    sec.addEventListener("click", function(e){
+      var btn = e.target.closest("button[data-act='consume']");
+      if(!btn) return;
+      var id = btn.getAttribute("data-id");
+      consumeToday(id);
+    });
+  }
+
+  /* ============ 入库登记表单 ============ */
+  function bindAddForm(){
+    var sel = document.getElementById("addCat");
+    sel.innerHTML = CATEGORIES.map(function(c){ return "<option value='"+c+"'>"+c+"</option>"; }).join("");
+    var form = document.getElementById("addForm");
+    var msg = document.getElementById("addMsg");
+    form.addEventListener("submit", function(e){
+      e.preventDefault();
+      var name = document.getElementById("addName").value.trim();
+      var cat = sel.value;
+      var qty = document.getElementById("addQty").value.trim();
+      var exp = document.getElementById("addExp").value;
+      if(!name || !qty){ msg.style.color="#b91c1c"; msg.textContent="请填写「名称」和「数量」"; return; }
+      addItem({Name:name, Category:cat, Quantity:qty, ExpireDate:exp||"", Status:"待消耗"}).then(function(){
+        msg.style.color="#047857"; msg.textContent="已入库 ✓ 已同步到云端";
+        form.reset(); sel.value = cat;
+      });
+    });
+  }
+
+  /* ============ 静态：本周菜单（按库存过滤显示） ============ */
+  // 每道菜拆成 [显示名, [所需库存食材...]]；所需食材任一吃完即整项隐藏
+  var WEEK = [
+    ["周一",
+      [["麦片",["麦片"]],["奶粉",["奶粉"]],["咖啡",["咖啡浓缩液"]]],
+      [["冬阴功煮面",["面饼","冬阴功汤底"]],["福鼎肉片",["福鼎肉片"]],["生菜",["生菜"]]],
+      [["水饺",["水饺"]],["大白菜",["大白菜"]]]],
+    ["周二",
+      [["水饺",["水饺"]],["茶包",["茶包"]]],
+      [["煮面",["面饼"]],["冬阴功",["冬阴功汤底"]],["面筋",["面筋"]],["白菜",["大白菜"]]],
+      [["大米糯米粥",["大米"]],["鸡肉肠",["鸡肉肠"]]]],
+    ["周三",
+      [["烤鸭饼",["烤鸭饼"]],["奶粉",["奶粉"]]],
+      [["冬阴功煮面",["面饼","冬阴功汤底"]],["福鼎肉片",["福鼎肉片"]],["白菜",["大白菜"]]],
+      [["水饺",["水饺"]],["生菜",["生菜"]]]],
+    ["周四",
+      [["麦片",["麦片"]],["咖啡",["咖啡浓缩液"]]],
+      [["煮面",["面饼"]],["冬阴功",["冬阴功汤底"]],["面筋",["面筋"]],["白菜",["大白菜"]]],
+      [["大米糯米粥",["大米"]],["金华火腿",["金华火腿"]]]],
+    ["周五",
+      [["水饺",["水饺"]],["茶包",["茶包"]]],
+      [["冬阴功煮面",["面饼","冬阴功汤底"]],["福鼎肉片",["福鼎肉片"]],["胡萝卜",["胡萝卜"]]],
+      [["水饺",["水饺"]],["白菜",["大白菜"]]]],
+    ["周六",
+      [["麦片",["麦片"]],["奶粉",["奶粉"]],["咖啡",["咖啡浓缩液"]]],
+      [["红酸汤煮土豆",["土豆","贵州红酸汤"]],["煮面",["面饼"]],["火腿",["金华火腿"]]],
+      [["大米糯米粥",["大米"]],["面筋",["面筋"]]]],
+    ["周日",
+      [["烤鸭饼",["烤鸭饼"]],["奶粉",["奶粉"]]],
+      [["冬阴功煮面",["面饼","冬阴功汤底"]],["福鼎肉片",["福鼎肉片"]],["白菜",["大白菜"]]],
+      [["榴莲飞饼",["榴莲飞饼"]],["清炒土豆丝",["土豆"]]]]
+  ];
+  function renderMenu(){
+    var grid = document.getElementById("menuGrid");
+    function mealRow(k, tokens){
+      var ok = tokens.filter(function(t){
+        return t[1].every(function(n){ return inStock(n); });
+      });
+      var txt = ok.length
+        ? ok.map(function(t){ return t[0]; }).join("+")
+        : '<span style="color:#9ca3af">本餐食材已吃完，可自由安排</span>';
+      return '<div class="row"><span class="k">'+k+'</span><span>'+txt+'</span></div>';
+    }
+    grid.innerHTML = WEEK.map(function(d){
+      return '<details class="menu"><summary>'+d[0]+'</summary>'+
+        '<div class="body">'+ mealRow("早",d[1]) + mealRow("午",d[2]) + mealRow("晚",d[3]) +'</div>'+
+        '</details>';
+    }).join("");
+  }
+
+  /* ============ 静态：食物相克 ============ */
+  var TABOO = [
+    ["【结石警告】","空腹吃大量生柿子或未熟透的芒果，鞣酸与胃酸结合易形成胃结石。"],
+    ["【肠胃腹泻】","吃完大量海鲜（高蛋白）后立刻吃大量寒性水果（如梨、西瓜），极易导致消化不良和腹泻。"],
+    ["【皮肤发黄】","连续大量食用胡萝卜、橘子、南瓜等富含胡萝卜素的食物，会导致“高胡萝卜素血症”，皮肤发黄（停吃可恢复）。"],
+    ["【诱发痛风】","冬阴功汤底（海鲜熬制）与金华火腿同食，再大量饮用啤酒，高嘌呤叠加极易诱发痛风。"],
+    ["【血糖飙升】","云腿月饼、甜月饼等高糖高油食物，切勿与糯米、白粥同餐大量食用，会导致餐后血糖极速上升。"],
+    ["【药效冲突】","吃感冒药或抗生素前后两小时内，切勿食用蜂蜜或饮用浓茶，会减弱药效或产生不良反应。"]
+  ];
+  function renderTaboo(){
+    var grid = document.getElementById("tabooGrid");
+    grid.innerHTML = TABOO.map(function(t){
+      return '<div class="card"><h4>⚠️ '+t[0]+'</h4><p>'+t[1]+'</p></div>';
+    }).join("");
+  }
+
+  /* ============ 三餐按钮（闭包严格隔离） ============ */
+  function bindDraw(){
+    var map = { breakfast:drawBreakfast, lunch:drawLunch, dinner:drawDinner };
+    var btns = document.querySelectorAll("button[data-draw]");
+    Array.prototype.forEach.call(btns, function(btn){
+      var key = btn.getAttribute("data-draw");
+      btn.addEventListener("click", function(){
+        renderMeal(key, map[key]);
+      });
+    });
+  }
+
+  /* ============ 自种补给：事件绑定 ============ */
+  function bindGrow(){
+    var form = document.getElementById("growForm");
+    var msg  = document.getElementById("growMsg");
+    form.addEventListener("submit", function(e){
+      e.preventDefault();
+      var name = document.getElementById("growName").value.trim();
+      if(!name){ msg.textContent = "请填写作物名称"; return; }
+      var rec = {
+        Name: name,
+        Stage: document.getElementById("growStage").value,
+        Quantity: document.getElementById("growQty").value.trim(),
+        Note: document.getElementById("growNote").value.trim()
+      };
+      addGrow(rec).then(function(){
+        renderGrow();
+        msg.textContent = "已登记「"+name+"」🌱 标记为「可采收」后会进入三餐蔬菜池";
+        form.reset();
+      }).catch(function(err){ msg.textContent = "保存失败："+(err&&err.message||err); });
+    });
+
+    document.getElementById("cropGrid").addEventListener("click", function(e){
+      var btn = e.target.closest("button[data-grow-act]");
+      if(!btn) return;
+      var id  = btn.getAttribute("data-id");
+      var act = btn.getAttribute("data-grow-act");
+      var p;
+      if(act === "harvest"){ p = {Stage:{select:"可采收"}}; }
+      else if(act === "used"){ p = {Stage:{select:"已用完"}}; }
+      else if(act === "del"){
+        if(!confirm("删除这条自种记录？")) return;
+        removeGrow(id).then(function(){ renderGrow(); });
+        return;
+      } else { return; }
+      updateGrow(id, p).then(function(){
+        renderGrow();
+        msg.textContent = act==="harvest" ? "已标记为可采收，下一餐就会用它 🌿"
+                    : act==="used"    ? "已标记为本轮吃完，长出新一茬后点「又长出来了」"
+                    : "";
+      }).catch(function(err){ msg.textContent = "操作失败："+(err&&err.message||err); });
+    });
+  }
+
+  /* ============ 每周专款：事件绑定 ============ */
+  function bindFund(){
+    var form = document.getElementById("fundForm");
+    var msg  = document.getElementById("fundMsg");
+    var dateEl = document.getElementById("fundDate");
+    var today = new Date();
+    var todayStr = today.getFullYear()+"-"+("0"+(today.getMonth()+1)).slice(-2)+"-"+("0"+today.getDate()).slice(-2);
+    dateEl.value = todayStr;
+
+    form.addEventListener("submit", function(e){
+      e.preventDefault();
+      var item = document.getElementById("fundItem").value.trim();
+      var cost = parseFloat(document.getElementById("fundCost").value);
+      if(!item){ msg.textContent = "请填写买了什么"; return; }
+      if(!(cost>=0)){ msg.textContent = "金额填个数字吧"; return; }
+      var rec = {
+        Item: item, Cost: cost,
+        Category: document.getElementById("fundCat").value,
+        BuyDate: dateEl.value || todayStr,
+        Note: ""
+      };
+      addFund(rec).then(function(){
+        renderFund();
+        msg.textContent = "已记一笔："+item+" "+fmtNum(cost)+" 元";
+        document.getElementById("fundItem").value = "";
+        document.getElementById("fundCost").value = "";
+      }).catch(function(err){ msg.textContent = "保存失败："+(err&&err.message||err); });
+    });
+
+    document.getElementById("fundBody").addEventListener("click", function(e){
+      var btn = e.target.closest("button[data-fund-act]");
+      if(!btn) return;
+      if(btn.getAttribute("data-fund-act") !== "del") return;
+      var id = btn.getAttribute("data-id");
+      removeFund(id).then(function(){ renderFund(); msg.textContent = "已删除该笔"; });
+    });
+  }
+
+  /* ============ 启动 ============ */
+  function start(){
+    document.getElementById("modeTag").textContent =
+      isCloud() ? "☁️ 已接入 WorkBuddy 数据表（在线存储·双向同步）" : "💾 本地模式（localStorage 兜底，数据存于本机浏览器）";
+    bindInv(); bindPlan(); bindAddForm(); bindDraw(); renderTaboo();
+    bindGrow(); bindFund();
+    loadData().then(function(){
+      renderAll();
+    }).catch(function(err){
+      console.error("[家底清] 加载失败：", err);
+      INV = defaultItems(); renderAll();
+    });
+
+    // 自种 + 专款：并行加载，两表互不依赖
+    loadGrow().then(function(){ renderGrow(); }).catch(function(err){
+      console.error("[家底清] 自种加载失败：", err);
+      loadGrowLocal().then(function(){ renderGrow(); });
+    });
+    loadFund().then(function(){ renderFund(); }).catch(function(err){
+      console.error("[家底清] 专款加载失败：", err);
+      loadFundLocal().then(function(){ renderFund(); });
+    });
+
+    if(isCloud() && typeof dbSdk.onUpdated === "function"){
+      dbSdk.onUpdated(function(payload){
+        var ids = (payload && payload.databaseIds) || [];
+        if(ids.indexOf(DATABASE_ID) !== -1){ reload(); }
+        if(ids.indexOf(GROW_DB_ID) !== -1){
+          loadGrow().then(function(){ renderGrow(); });
+        }
+        if(ids.indexOf(FUND_DB_ID) !== -1){
+          loadFund().then(function(){ renderFund(); });
+        }
+      });
+    }
+  }
+
+  if(document.readyState === "loading"){
+    document.addEventListener("DOMContentLoaded", start);
+  } else { start(); }
+})();
+</script>
+</body>
+</html>
