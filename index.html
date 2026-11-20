@@ -343,15 +343,23 @@
 <script>
 (function(){
   "use strict";
-  var DATABASE_ID = 'IrpnWd0Fpe55A9HFezDtm3';
-  var GROW_DB_ID = 'mBCilVqmN9x65wyB2SMRzk';   // Self_Grow    自种补给
-  var FUND_DB_ID = '9kiVIh5LxIQsMx4eG9XC1K';   // Weekly_Fund  每周 70 元专款
+  /* ============================================================
+   * 数据表配置（可选）—— 留空即纯本地浏览器模式，开箱即用
+   * 想让手机和电脑共用一份数据：在 WorkBuddy 建三张数据表，
+   * 把 ID 粘到下面（字段名见 README）。
+   *   DATABASE_ID  库存表 Food_Inventory
+   *   GROW_DB_ID   自种补给 Self_Grow
+   *   FUND_DB_ID   每周专款 Weekly_Fund
+   * ============================================================ */
+  var DATABASE_ID = '';
+  var GROW_DB_ID = '';
+  var FUND_DB_ID = '';
   var dbSdk = window.__SMART_PAGE__ && window.__SMART_PAGE__.database;
-  var LS_KEY = 'qinghuan_food_inventory_v2';
-  var LS_GROW = 'qinghuan_self_grow_v1';
-  var LS_FUND = 'qinghuan_weekly_fund_v1';
-  var WEEKLY_CAP = 70;              // 每周 70 元
-  var MONTHLY_CAP = WEEKLY_CAP * 4; // 每月上限（按 4 周折算 = 280 元）
+  var LS_KEY = 'zerowastekit_inventory_v1';
+  var LS_GROW = 'zerowastekit_self_grow_v1';
+  var LS_FUND = 'zerowastekit_weekly_fund_v1';
+  var WEEKLY_CAP = 70;              // 每周专款上限（元）
+  var MONTHLY_CAP = WEEKLY_CAP * 4; // 月度上限（按 4 周折算）
 
   // 全部分类：保留原有食材分类 + 新增家用分类（与数据表字段选项一致）
   var CATEGORIES = ["蔬菜","水果","肉类","主食","零食","调料","日用品","清洁用品","药品","文具","工具","宠物用品","其他"];
@@ -372,10 +380,22 @@
       ["茶包","调料","10包"],["袋装茶叶","调料","90g"],["甜酒曲","调料","24g"],
       ["南酸枣糕","零食","30颗"],["牛肉粒","零食","100粒"],["奶贝","零食","100个"]
     ];
+    // 到期日按「距今天数」动态生成，保证任何人第一次打开都看到合理的临期分布
     function expOf(cat){
-      if(cat==="蔬菜"||cat==="水果"||cat==="肉类") return "2026-10-25";
-      if(cat==="零食") return "2026-11-18";
-      return "2027-04-18";
+      var day = 86400000, now = new Date();
+      now.setHours(0,0,0,0);
+      function d(offset){
+        // 按本地时区格式化，避免 toISOString 的 UTC 偏移导致差一天
+        var t = new Date(now.getTime() + offset * day);
+        return t.getFullYear() + '-' +
+          String(t.getMonth()+1).padStart(2,'0') + '-' +
+          String(t.getDate()).padStart(2,'0');
+      }
+      if(cat==="蔬菜"||cat==="水果") return d(3);
+      if(cat==="肉类") return d(6);
+      if(cat==="零食") return d(12);
+      if(cat==="主食") return d(45);
+      return d(120);
     }
     return raw.map(function(r,i){
       return {_id:"seed_"+i, Name:r[0], Category:r[1], Quantity:r[2],
@@ -387,7 +407,9 @@
   var INV = [];
 
   /* ============ 数据层：云端 SDK + 本地兜底 ============ */
-  function isCloud(){ return !!dbSdk; }
+  function isCloud(){ return !!(dbSdk && DATABASE_ID); }
+  function isCloudGrow(){ return !!(dbSdk && GROW_DB_ID); }
+  function isCloudFund(){ return !!(dbSdk && FUND_DB_ID); }
 
   function norm(rec){
     return {
@@ -479,7 +501,7 @@
     });
   }
   function loadGrow(){
-    if(isCloud()){
+    if(isCloudGrow()){
       return loadGrowCloud().then(function(rows){
         GROW = rows;
         if(GROW.length===0){
@@ -511,7 +533,7 @@
   }
   function persistGrowLocal(){ try{ localStorage.setItem(LS_GROW, JSON.stringify(GROW)); }catch(e){} }
   function addGrow(rec){
-    if(isCloud()){
+    if(isCloudGrow()){
       return dbSdk.addRecord({databaseId:GROW_DB_ID, properties:{
         Name:{text:rec.Name}, Stage:{select:rec.Stage},
         Quantity:{text:rec.Quantity}, Note:{text:rec.Note}
@@ -521,7 +543,7 @@
     GROW.push(rec); persistGrowLocal(); return loadGrowLocal();
   }
   function updateGrow(id, props){
-    if(isCloud()){
+    if(isCloudGrow()){
       return dbSdk.updateRecord({databaseId:GROW_DB_ID, recordId:id, properties:props})
         .then(function(){ return loadGrow(); });
     }
@@ -530,7 +552,7 @@
     persistGrowLocal(); return loadGrowLocal();
   }
   function removeGrow(id){
-    if(isCloud()){
+    if(isCloudGrow()){
       return dbSdk.deleteRecord({databaseId:GROW_DB_ID, recordId:id})
         .then(function(){ return loadGrow(); });
     }
@@ -566,7 +588,7 @@
     });
   }
   function loadFund(){
-    if(isCloud()){
+    if(isCloudFund()){
       return loadFundCloud().then(function(rows){ FUND = rows; return FUND; })
         .catch(function(){ return loadFundLocal(); });
     }
@@ -581,7 +603,7 @@
   }
   function persistFundLocal(){ try{ localStorage.setItem(LS_FUND, JSON.stringify(FUND)); }catch(e){} }
   function addFund(rec){
-    if(isCloud()){
+    if(isCloudFund()){
       var props = {Item:{text:rec.Item}, Cost:{number:rec.Cost}, Category:{select:rec.Category}};
       if(rec.BuyDate) props.BuyDate = {date:rec.BuyDate};
       if(rec.Note) props.Note = {text:rec.Note};
@@ -592,7 +614,7 @@
     FUND.push(rec); persistFundLocal(); return loadFundLocal();
   }
   function removeFund(id){
-    if(isCloud()){
+    if(isCloudFund()){
       return dbSdk.deleteRecord({databaseId:FUND_DB_ID, recordId:id})
         .then(function(){ return loadFund(); });
     }
@@ -1564,10 +1586,10 @@
       dbSdk.onUpdated(function(payload){
         var ids = (payload && payload.databaseIds) || [];
         if(ids.indexOf(DATABASE_ID) !== -1){ reload(); }
-        if(ids.indexOf(GROW_DB_ID) !== -1){
+        if(isCloudGrow() && ids.indexOf(GROW_DB_ID) !== -1){
           loadGrow().then(function(){ renderGrow(); });
         }
-        if(ids.indexOf(FUND_DB_ID) !== -1){
+        if(isCloudFund() && ids.indexOf(FUND_DB_ID) !== -1){
           loadFund().then(function(){ renderFund(); });
         }
       });
