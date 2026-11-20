@@ -1,0 +1,18 @@
+# OS / editor noise
+.DS_Store
+Thumbs.db
+*.swp
+.vscode/
+.idea/
+
+# Local secrets & credentials (never commit)
+*.pem
+*.key
+.env
+.env.*
+*_token*
+*token*.txt
+
+# Python build artifacts (source lives in a separate private project)
+__pycache__/
+*.pyc
